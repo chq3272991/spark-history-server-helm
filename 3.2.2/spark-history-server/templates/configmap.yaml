@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "spark-history-server.fullname" . }}
+data:
+  sparkDefaults: |
+    {{- if .Values.hdfs.enabled }}
+    spark.history.fs.logDirectory={{ .Values.hdfs.logDirectory }}
+    {{- else if .Values.s3a.enabled }}
+    spark.history.fs.logDirectory={{ .Values.s3a.logDirectory }}
+    spark.hadoop.fs.s3a.access.key={{ .Values.s3a.accessKey }}
+    spark.hadoop.fs.s3a.secret.key={{ .Values.s3a.secretKey }}
+    spark.hadoop.fs.s3a.endpoint={{ .Values.s3a.endpoint }}
+    spark.hadoop.fs.s3a.connection.ssl.enabled={{ .Values.s3a.sslEnable }}
+    spark.hadoop.fs.s3a.path.style.access={{ .Values.s3a.styleAccess }}
+    spark.hadoop.fs.s3a.impl={{ .Values.s3a.impl }}
+    spark.hadoop.fs.s3a.aws.credentials.provider={{ .Values.s3a.simpleAWSCredentialsProvider }}
+    {{- end }}

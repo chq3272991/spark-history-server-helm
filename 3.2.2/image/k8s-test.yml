@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark-history-service
+  namespace: spark-operator
+  labels:
+    run: spark-history-service
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    name: http
+  - port: 18080
+    protocol: TCP
+    name: spark-history
+  selector:
+    run: spark-history-service
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spark-history-defaults
+  namespace: spark-operator
+data:
+  sparkDefaults: |
+    spark.kubernetes.authenticate.driver.serviceAccountName=default
+    # spark.kubernetes.file.upload.path=s3a://mybucket/sparkOnK8s/kubernetes/file/upload
+    spark.kubernetes.file.upload.path=s3a://sparklogs/all
+    spark.eventLog.dir=s3a://sparklogs/all
+    spark.history.fs.logDirectory=s3a://sparklogs/all
+    spark.hadoop.fs.s3a.access.key=minio
+    spark.hadoop.fs.s3a.secret.key=minio123
+    spark.hadoop.fs.s3a.endpoint=http://192.168.208.129:32000
+    spark.hadoop.fs.s3a.connection.ssl.enabled=false
+    spark.hadoop.fs.s3a.path.style.access=true
+    spark.hadoop.fs.s3.impl=org.apache.hadoop.fs.s3a.S3AFileSystem
+    spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem
+    spark.hadoop.fs.s3a.path.style.access=true
+    spark.hadoop.fs.s3a.aws.credentials.provider=org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider
+    spark.eventLog.compress=true
+    spark.history.fs.cleaner.enabled=true
+    spark.history.fs.cleaner.interval=1d
+    spark.history.fs.cleaner.maxAge=7d
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spark-history-service
+  namespace: spark-operator
+spec:
+  selector:
+    matchLabels:
+      run: spark-history-service
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        run: spark-history-service
+    spec:
+      containers:
+      - name: spark-history-service
+        image: umr/spark:v11
+        volumeMounts:
+        - name: settings
+          mountPath: /opt/spark/conf/spark-defaults.conf
+          subPath: sparkDefaults
+        command: ["/opt/spark/bin/spark-class"]
+        args: ["org.apache.spark.deploy.history.HistoryServer"]
+      volumes:
+      - name: settings
+        configMap:
+          name: spark-history-defaults
